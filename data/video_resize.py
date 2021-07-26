@@ -57,6 +57,17 @@ def video_resize_ffmpeg(input_path, output_path, out_width=720):
     ffmpeg.run(stream)
 
 def main():
+    '''
+    finds mp4 file and create resized video with same aspect ratio and width
+    resized video file name will have '_resized_width' at the end
+    
+    how to use :
+    python video_resize.py "path" "width" "version"
+
+    path : video path (search mp4 recursively)
+    width : output width
+    version: 'ffmpeg' or 'opencv' 
+    '''
     path = sys.argv[1] # "D:/AIHub/이상행동 CCTV 영상/01.폭행(assult)" 
     width = int(sys.argv[2])
     # fps = int(sys.argv[3])
@@ -81,7 +92,7 @@ def main():
                     video_resize_opencv(filepath, out_path, out_width=width)
                 elif version == 'ffmpeg':
                     video_resize_ffmpeg(filepath, out_path, out_width=width)
-                    
+
             print('finished : {} out of {}'.format(idx+1,video_count))
             print('time took : ', round(time.time() - start_time,3) , ' sec')
 
