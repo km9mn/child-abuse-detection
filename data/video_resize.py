@@ -1,20 +1,17 @@
-import numpy as np
-import cv2
 import os
+import sys
+import cv2
 import glob
-import imutils
 import time
-
-path = "D:/AIHub/이상행동 CCTV 영상/01.폭행(assult)" 
-
-# video_resize.py
+import imutils
+import numpy as np
 
 def video_resize(target, out, out_width=720, frame_rate=24):
     cap = cv2.VideoCapture(target)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) # 영상의 넓이(가로) 프레임
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) # 영상의 높이(세로) 프레임
-    frameRate = int(cap.get(cv2.CAP_PROP_FPS)) 
-    print(width, height, frameRate)
+    # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) # 영상의 넓이(가로) 프레임
+    # height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) # 영상의 높이(세로) 프레임
+    # frameRate = int(cap.get(cv2.CAP_PROP_FPS)) 
+    # print(width, height, frameRate)
     
     # 비디오 저장 변수
     writer = None
@@ -51,6 +48,9 @@ def video_resize(target, out, out_width=720, frame_rate=24):
     cap.release()
 
 def main():
+    path = sys.argv[1] # "D:/AIHub/이상행동 CCTV 영상/01.폭행(assult)" 
+    width = int(sys.argv[2])
+    fps = int(sys.argv[3])
 
     for filepath in glob.glob(path +'/**/*', recursive=True):
         #print('FILE PATH : ', filepath)
@@ -58,14 +58,13 @@ def main():
         file_format = filepath.split('.')[-1]
         file_path = filepath.split(filename)[0]
         #print(filename,file_format,file_path)
+
         if file_format == 'mp4' or file_format == 'avi':
             start_time = time.time()
-            out_path = file_path + filename + '_TEST.' + file_format
+            out_path = file_path + filename + '_resized_' + str(width) + '_' + str(fps) + '.' + file_format
 
             print('**** working on " '+ filename +' " ****')
-
-            video_resize(filepath, out_path)
-
+            video_resize(filepath, out_path, out_width=width, frame_rate=fps)
             print('time took : ', round(time.time() - start_time,3) , ' sec')
 
 if __name__=='__main__':
