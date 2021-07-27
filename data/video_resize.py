@@ -68,14 +68,16 @@ def main():
     width : output width
     version: 'ffmpeg' or 'opencv' 
     '''
+
     path = sys.argv[1] # "D:/AIHub/이상행동 CCTV 영상/01.폭행(assult)" 
     width = int(sys.argv[2])
     # fps = int(sys.argv[3])
     version = sys.argv[3]
-    video_count = len(glob.glob(path +'/**/*.mp4', recursive=True))
+    mp4_path_list = glob.glob(path +'/**/*.mp4', recursive=True)
+    video_count = len(mp4_path_list)
 
     print('number of mp4 files : ', video_count)
-    for idx, filepath in enumerate(glob.glob(path +'/**/*.mp4', recursive=True)):
+    for idx, filepath in enumerate(mp4_path_list):
         #print('FILE PATH : ', filepath)
         filename = filepath.split('\\')[-1].split('.')[0]
         file_format = filepath.split('.')[-1]
@@ -85,7 +87,7 @@ def main():
         if file_format == 'mp4' or file_format == 'avi':
             start_time = time.time()
             out_path = file_path + filename + '_resized_' + str(width) + '.' + file_format
-            if not os.path.exists(out_path):
+            if not os.path.isfile(out_path):
                 print('**** working on " '+ filename +' " ****')
 
                 if version=='opencv':
