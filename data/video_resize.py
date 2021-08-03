@@ -83,7 +83,8 @@ def main():
         file_format = filepath.split('.')[-1]
         file_path = filepath.split(filename)[0]
         #print(filename,file_format,file_path)
-
+        if filename[-11:] == 'resized_720':
+            continue
         if file_format == 'mp4' or file_format == 'avi':
             start_time = time.time()
             out_path = file_path + filename + '_resized_' + str(width) + '.' + file_format
