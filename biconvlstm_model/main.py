@@ -1,5 +1,3 @@
-# Based on code from https://github.com/pytorch/examples/blob/master/imagenet/main.py
-
 import datetime
 import argparse
 import os
@@ -84,7 +82,6 @@ def main():
     (train_dataset, val_dataset) = next(folds)
 
     def transform_factory(transformation):
-
         if(transformation == "RC"):
             train_transform = transforms.Compose([Resize(size=256), RandomCrop(size=224), RandomHorizontalFlip()])
         elif(transformation == "R"):
@@ -93,13 +90,14 @@ def main():
             train_transform = transforms.Compose([Resize(size=224), RandomHorizontalFlip()])
 
         return train_transform
+    
     print('dataset loading')
+
     train_transformations = transforms.Compose([transform_factory(args.transform), SelectFrames(num_frames=args.frames), FrameDifference(dim=0), Normalize(), ToTensor()])
     val_transformations = transforms.Compose([Resize(size=224), SelectFrames(num_frames=args.frames), FrameDifference(dim=0), Normalize(), ToTensor()])
-    #print(val_transformations)
+    
     train_dataset = DatasetTransform(train_dataset, train_transformations)
     val_dataset = DatasetTransform(val_dataset, val_transformations)
-    #print(val_dataset)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
@@ -108,7 +106,7 @@ def main():
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
-    #print(val_loader)
+    
     print('dataset loaded')
 
     # create model
@@ -120,24 +118,27 @@ def main():
     if not args.cpu:
         model = model.cuda()
     print('model loaded')
-    criterion = nn.CrossEntropyLoss()
 
+    criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), args.lr,
                                  weight_decay=args.weight_decay)
 
     loss = list()
     acc = list()
     prec = list()
-    path = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/BiConvLSTM_Violence_Detection_Spatiotemporal_Encoder/acc_graph/'
+    graph_path = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/BiConvLSTM_Violence_Detection_Spatiotemporal_Encoder/acc_graph/'
 
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
+            
             f_name = os.path.basename(args.resume)
-            graph = np.load(path+'acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy')
-            loss = graph[1].tolist()
+            graph = np.load(graph_path+'acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy')
+            print('loading model saved on ', re.findall(r'_t(.+).tar',f_name)[0])
+
             acc = graph[0].tolist()
+            loss = graph[1].tolist()
             prec = graph[2].tolist()
 
             checkpoint = torch.load(args.resume)
@@ -154,13 +155,14 @@ def main():
     if args.evaluate:
         validate(val_loader, model)
         return
+
     now = datetime.datetime.now() + datetime.timedelta(hours=9)
     nowDatetime = now.strftime('%Y-%m-%d %H:%M:%S')
 
-    run_training(train_loader, val_loader, model, criterion, optimizer, best_prec, nowDatetime, acc,loss, prec, path, args.ID)
+    run_training(train_loader, val_loader, model, criterion, optimizer, best_prec, nowDatetime, acc, loss, prec, graph_path, args.ID)
 
 
-def run_training(train_loader, val_loader, model, criterion, optimizer, best_prec, starttime, accuray_list,loss_list, precision_list, path, ID):
+def run_training(train_loader, val_loader, model, criterion, optimizer, best_prec, starttime, accuray_list,loss_list, precision_list, graph_path, ID):
 
     epoch = 0
     print('run training start')
@@ -177,8 +179,8 @@ def run_training(train_loader, val_loader, model, criterion, optimizer, best_pre
         precision_list.append(prec)
 
         # graph 및 acc,loss,prec 저장
-        save_accuracy_graph(path, accuray_list, loss_list, precision_list, starttime)
-        np.save(path + 'acc_loss_prec_' + starttime ,[accuray_list,loss_list,precision_list])
+        save_accuracy_graph(graph_path, accuray_list, loss_list, precision_list, starttime)
+        np.save(graph_path + 'acc_loss_prec_' + starttime ,[accuray_list,loss_list,precision_list])
 
         # remember best prec@1 and save checkpoint
         is_best = prec > best_prec
@@ -193,7 +195,6 @@ def run_training(train_loader, val_loader, model, criterion, optimizer, best_pre
             }, is_best, args.arch + "_" + args.data_name + "_fold_" + str(args.kfold), starttime=starttime)#d=ID,
         
         epoch += 1
-
 
 def train(train_loader, model, criterion, optimizer, epoch):
     batch_time = AverageMeter()
@@ -268,8 +269,8 @@ def validate(val_loader, model):
         output_dict = model(input_var)
 
         # measure accuracy and record loss
-        #print('target : ',target)
-        print('----------\n accuracy : ', accuracy(output_dict['classification'], target))    
+        # print('target : ',target)
+        # print('----------\n accuracy : ', accuracy(output_dict['classification'], target))    
         precision = accuracy(output_dict['classification'], target)
         prec.update(precision, input.size(0))
 
@@ -291,8 +292,6 @@ def save_checkpoint(state, is_best,id='someid', starttime='tmp'): #id='someid'
     if is_best:
         model_best_filename = 'model_best.' +str(id) +'_t' +starttime+'.tar' # str(id) + 
         shutil.copyfile(filename, model_best_filename)
-
-
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):
@@ -321,63 +320,45 @@ def accuracy(output, target):
     res = correct * 100.0 / batch_size
     return res
 
-# DatasetSplit (data, index, length)
-def fold(folds, data): #folds : 몇개로 나눌건가 , data : DatasetReader
-    tot_length = len(data) #tot_length: 영상 총 개수
-    split_length = tot_length // folds # // : 나누기 결과에서 소수점 버려줌, split_length : 몇개가 한묶음?
-    for i in range(folds): # folds =3, split_length = 5, tot_length = 15일때 i= 0,1,2
-        train_dataset = DatasetSplit(data, (i + 1) * split_length, tot_length - split_length) # 5, 10개/ 10, 10개 / 15 , 10개
-        val_dataset = DatasetSplit(data, i * split_length, split_length) # 0,5개 / 5 , 5개/ 10 , 5개
+def fold(folds, data): 
+    tot_length = len(data) 
+    split_length = tot_length // folds
+    for i in range(folds): 
+        train_dataset = DatasetSplit(data, (i + 1) * split_length, tot_length - split_length) 
+        val_dataset = DatasetSplit(data, i * split_length, split_length)
         yield (train_dataset, val_dataset)
-# 총 영상 개수 15개 일때 3 folds를 하면 5개는 val/ 10개는 train
-# idx = 3
-# train_dataset -> self.index = 5, length = 10 -> index = (5+6) % 10 = 1
-# val_dataset -> self.index = 0, length = 5
-
 
 def network_factory(arch):
 
     if arch == 'E':
         from networks.E import VP
-
     elif arch == 'E_bi':
         from networks.E_bi import VP
-
     elif arch == 'E_bi_avg_pool':
         from networks.E_bi_avg_pool import VP
-
     elif arch == 'E_bi_max_pool':
         from networks.E_bi_max_pool import VP
-
     else:
         assert 0, "Bad network arch name: " + arch
 
     return VP
 
-def save_accuracy_graph(path, accuracy,loss, prec, starttime, filename=''): 
-    # 이때 filename으로 파일이 저장되고 이때 시점에 accuracy(list) 등에 저장된 것으로 시각화 
+def save_accuracy_graph(path, accuracy, loss, prec, starttime, filename=''): 
+    # path에 filename + 시작시간 + '_acc_loss.jpg'로 저장할 예정
     plt.figure(figsize=(5,15))
-    plt.subplot(3,1,1)
-    f_path = "/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Test Data/
-    filename = 'checkpoint.' + str(id) +'_t'+ starttime + '.tar' 
-    f_name = os.path.basename(f_path + filename)
-    
-    graph=graph = np.load(path+'acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy',allow_pickle=True)
-    loss = graph[1]
-    acc = graph[0]
-    prec = graph[2]
 
-    plt.plot(graph[0],label='acc', color='r')
+    plt.subplot(3,1,1)
+    plt.plot(accuracy,label='acc', color='r')
     plt.legend()
     plt.xlabel('epoch')
 
     plt.subplot(3,1,2)
-    plt.plot(graph[1],label='loss', color='g')
+    plt.plot(loss,label='loss', color='g')
     plt.legend()
     plt.xlabel('epoch')
 
     plt.subplot(3,1,3)
-    plt.plot(graph[2],label='precision', color='b')
+    plt.plot(prec,label='precision', color='b')
     plt.xlabel('epoch')
     plt.legend()
     plt.savefig(path+filename+starttime+'_acc_loss.jpg')
