@@ -22,7 +22,7 @@ from data.data_transformer import DatasetTransform
 from data.transforms import SelectFrames, FrameDifference, Downsample, TileVideo, RandomCrop, Resize, RandomHorizontalFlip, Normalize, ToTensor
 
 model_names = ['E', 'E_bi', 'E_bi_avg_pool', 'E_bi_max_pool']
-data_names = ['FD','RWF','AH','UCF','ALL']
+data_names = ['FD','RWF','AH','UCF','ALL', 'YT']
 
 
 parser = argparse.ArgumentParser(description='PyTorch Violence Predictor Training')
@@ -55,7 +55,7 @@ parser.add_argument('--c', '--cpu', dest='cpu', action='store_true',
                     help='evaluate model on cpu')
 parser.add_argument('--k', '--kfold', dest='kfold', default=0, type=int,
                     help='evaulate model with kfold index as test')
-parser.add_argument('--s', '--split', dest='split', default=5, type=int,
+parser.add_argument('--s', '--split', dest='split', default=4, type=int,
                     help='fractional split of training/validation data. I.e. 5 -> 1/5 data is validation')
 parser.add_argument('--f', '--frames', dest='frames', default=20, type=int,
                     help='number of frame diffs per video')
@@ -93,13 +93,13 @@ def main():
             train_transform = transforms.Compose([Resize(size=224), RandomHorizontalFlip()])
 
         return train_transform
-
-    train_transformations = transforms.Compose([transform_factory(args.transform), SelectFrames(num_frames=20), FrameDifference(dim=0), Normalize(), ToTensor()])
-    val_transformations = transforms.Compose([Resize(size=224), SelectFrames(num_frames=20), FrameDifference(dim=0), Normalize(), ToTensor()])
-    print(val_transformations)
+    print('dataset loading')
+    train_transformations = transforms.Compose([transform_factory(args.transform), SelectFrames(num_frames=args.frames), FrameDifference(dim=0), Normalize(), ToTensor()])
+    val_transformations = transforms.Compose([Resize(size=224), SelectFrames(num_frames=args.frames), FrameDifference(dim=0), Normalize(), ToTensor()])
+    #print(val_transformations)
     train_dataset = DatasetTransform(train_dataset, train_transformations)
     val_dataset = DatasetTransform(val_dataset, val_transformations)
-    print(val_dataset)
+    #print(val_dataset)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=True,
@@ -108,7 +108,8 @@ def main():
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
-    print(val_loader)
+    #print(val_loader)
+    print('dataset loaded')
 
     # create model
     print("=> creating model '{}'".format(args.arch))
@@ -118,7 +119,7 @@ def main():
 
     if not args.cpu:
         model = model.cuda()
-
+    print('model loaded')
     criterion = nn.CrossEntropyLoss()
 
     optimizer = torch.optim.Adam(model.parameters(), args.lr,
@@ -134,10 +135,10 @@ def main():
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
             f_name = os.path.basename(args.resume)
-            graph = np.load(path+'acc_loss_prec_' + re.findall(r'_t(.+).tar',fname)[0])
-            loss = graph[0]
-            acc = graph[1]
-            prec = graph[2]
+            graph = np.load(path+'acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy')
+            loss = graph[1].tolist()
+            acc = graph[0].tolist()
+            prec = graph[2].tolist()
 
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
@@ -153,7 +154,7 @@ def main():
     if args.evaluate:
         validate(val_loader, model)
         return
-    now = datetime.datetime.now()
+    now = datetime.datetime.now() + datetime.timedelta(hours=9)
     nowDatetime = now.strftime('%Y-%m-%d %H:%M:%S')
 
     run_training(train_loader, val_loader, model, criterion, optimizer, best_prec, nowDatetime, acc,loss, prec, path, args.ID)
@@ -162,7 +163,7 @@ def main():
 def run_training(train_loader, val_loader, model, criterion, optimizer, best_prec, starttime, accuray_list,loss_list, precision_list, path, ID):
 
     epoch = 0
-
+    print('run training start')
     while True:
         # train for one epoch
         acc, loss = train(train_loader, model, criterion, optimizer, epoch)
@@ -182,13 +183,14 @@ def run_training(train_loader, val_loader, model, criterion, optimizer, best_pre
         # remember best prec@1 and save checkpoint
         is_best = prec > best_prec
         best_prec = max(prec, best_prec)
+
         save_checkpoint({
             'epoch': epoch + 1,
             'arch': args.arch,
             'state_dict': model.state_dict(),
             'best_prec': best_prec,
             'optimizer': optimizer.state_dict(),
-            }, is_best, args.arch + "_" + args.data_name + "_fold_" + str(args.kfold),id=ID, starttime=starttime)
+            }, is_best, args.arch + "_" + args.data_name + "_fold_" + str(args.kfold), starttime=starttime)#d=ID,
         
         epoch += 1
 
@@ -215,7 +217,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         if not args.cpu:
             input_var = input_var.cuda()
             target_var = target_var.cuda()
-
+        
         # compute output
         output_dict = model(input_var)
         loss = criterion(output_dict['classification'], target_var)
@@ -267,7 +269,7 @@ def validate(val_loader, model):
 
         # measure accuracy and record loss
         #print('target : ',target)
-        #print('output : ',output_dict['classification'])    
+        print('----------\n accuracy : ', accuracy(output_dict['classification'], target))    
         precision = accuracy(output_dict['classification'], target)
         prec.update(precision, input.size(0))
 
@@ -283,11 +285,11 @@ def validate(val_loader, model):
     return prec.avg
 
 
-def save_checkpoint(state, is_best, id='someid', starttime='tmp'):
-    filename = 'checkpoint.' + str(id) +'_t'+ starttime + '.tar'
+def save_checkpoint(state, is_best,id='someid', starttime='tmp'): #id='someid'
+    filename = 'checkpoint.' + str(id) +'_t'+ starttime + '.tar' #str(id) +
     torch.save(state, filename)
     if is_best:
-        model_best_filename = 'model_best.' + str(id) + '_t' +starttime+'.tar'
+        model_best_filename = 'model_best.' +str(id) +'_t' +starttime+'.tar' # str(id) + 
         shutil.copyfile(filename, model_best_filename)
 
 
@@ -354,22 +356,30 @@ def network_factory(arch):
 
 def save_accuracy_graph(path, accuracy,loss, prec, starttime, filename=''): 
     # 이때 filename으로 파일이 저장되고 이때 시점에 accuracy(list) 등에 저장된 것으로 시각화 
-    plt.figure(figsize=(10,10))
+    plt.figure(figsize=(5,15))
+    plt.subplot(3,1,1)
+    f_path = "/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Test Data/
+    filename = 'checkpoint.' + str(id) +'_t'+ starttime + '.tar' 
+    f_name = os.path.basename(f_path + filename)
+    
+    graph=graph = np.load(path+'acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy',allow_pickle=True)
+    loss = graph[1]
+    acc = graph[0]
+    prec = graph[2]
 
-    plt.subplot(2,1,1)
-    plt.title('model accuracy')
-    plt.plot(accuracy, color='b', label='accuracy')
-    plt.plot(loss, color='r', label='loss')
-    plt.ylabel('accuracy')
+    plt.plot(graph[0],label='acc', color='r')
+    plt.legend()
     plt.xlabel('epoch')
-    plt.legend(['accuracy', 'loss'], loc='upper left')
 
-    plt.subplot(2,1,2)
-    plt.plot(prec, color='g', label='precision')
-    plt.title('test accuracy')
-    plt.ylabel('precision')
+    plt.subplot(3,1,2)
+    plt.plot(graph[1],label='loss', color='g')
+    plt.legend()
     plt.xlabel('epoch')
-    plt.legend(['precision'], loc='upper left')
+
+    plt.subplot(3,1,3)
+    plt.plot(graph[2],label='precision', color='b')
+    plt.xlabel('epoch')
+    plt.legend()
     plt.savefig(path+filename+starttime+'_acc_loss.jpg')
     #plt.show()
   
