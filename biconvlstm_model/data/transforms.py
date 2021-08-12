@@ -3,8 +3,8 @@ import cv2
 import torch
 
 class SelectFrames():
-    def __init__(self, num_frames=20):
-
+    def __init__(self, num_frames=5):
+        print('showing num_frames : ',num_frames)
         self.num_frames = num_frames
 
     def __call__(self,clip):

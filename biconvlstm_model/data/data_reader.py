@@ -20,7 +20,7 @@ def read_video(filename):
             # If the number of captured frames is equal to the total number of frames, we stop
             break
     cap.release()
-    print(filename, '\n',np.array(frames).shape)
+    #print(filename,np.array(frames).shape)
     video = np.stack(frames)
     return video
 

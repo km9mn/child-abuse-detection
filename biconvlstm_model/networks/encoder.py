@@ -9,7 +9,7 @@ class ConvEncoder(nn.Module):
         vggnet = models.__dict__['vgg13_bn'](pretrained=True)
         # Remove last max pooling layer of vggnet
         self.encoder = nn.Sequential(*list(vggnet.features.children())[:-1])
-
+        #self.features = vggnet.features
     def forward(self, clips):
         # Permute to run encoder on batch of each frame
         # NOTE: This requires clips to have the same number of frames!!
