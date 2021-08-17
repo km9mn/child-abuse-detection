@@ -99,9 +99,8 @@ def main():
     idx = 1
     total = 0
     #fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    #fps = cap.get(cv2.CAP_PROP_FPS) # 30
-    #width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float
-    #height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float
+    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))   # float
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  # float
     #out = cv2.VideoWriter('test'+str(idx)+'.mp4', fourcc,fps, (int(width), int(height)))
     frames = list()
     model_ret = 1
@@ -110,13 +109,13 @@ def main():
         ret, frame = cap.read()
         frame = np.array(frame)
         if model_ret == 0:
-            frame[-20:,-20:,0] = 0
-            frame[-20:,-20:,1] = 0
-            frame[-20:,-20:,2] = 255
+            frame[::height-1,:,0] = frame[:,::width-1,0] = 0
+            frame[::height-1,:,1] = frame[:,::width-1,1] = 0
+            frame[::height-1,:,2] = frame[:,::width-1,2] = 255
         else:
-            frame[-20:,-20:,0] = 255
-            frame[-20:,-20:,1] = 0
-            frame[-20:,-20:,2] = 0
+            frame[::height-1,:,0] = frame[:,::width-1,0] = 255
+            frame[::height-1,:,1] = frame[:,::width-1,1] = 0
+            frame[::height-1,:,2] = frame[:,::width-1,2] = 0
         cv2.imshow('frame',frame)
 
         if not ret:
@@ -129,33 +128,28 @@ def main():
             idx +=1
 
             ###############################################
-            val_dataset = DatasetReader(frames)
-            #data = torch.tensor(frames)
-
-            #folds = fold(args.split, data)
-            #(train_dataset, val_dataset) = next(folds)
-            #val_dataset = data
-
+            val_dataset = DatasetReader(np.array(frames)[:,80:-80,:,:])
             val_transformations = transforms.Compose([Resize(size=224), SelectFrames(num_frames=args.frames), FrameDifference(dim=0), Normalize(), ToTensor()])
-            # print(val_transformations)
             val_dataset = DatasetTransform(val_dataset, val_transformations)
-            # print(val_dataset)
-            
-            data = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=False)
-            #val_loader = torch.utils.data.DataLoader(
-            #    data, batch_size=args.batch_size, shuffle=False,
-            #    num_workers=args.workers, pin_memory=True)
-            #print(val_loader)
-            if not args.cpu:
-                data = data.cuda()
+ 
+            data = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=1, pin_memory=False)
+            #input = torch.tensor(frames)
 
             print('validating input ', idx)
-            model_result = validate(data, model)
-            if model_result[0] > model_result[1]:
-                model_ret = 0
-            else:
-                model_ret = 1
+            model.eval()
+            end = time.time()
+            input = None
+            for tmp in data:
+                input = tmp
+                break
+            print('shaep : ', input.shape)
+            input_var = torch.autograd.Variable(input, volatile=True)
+
+            # compute output
+            output_dict = model(input_var)
+            print(output_dict)
+            print(time.time() - end)
+
             #out = cv2.VideoWriter('test'+str(idx)+'.mp4', fourcc,fps, (int(width), int(height)))
 
             #model_ret = 1

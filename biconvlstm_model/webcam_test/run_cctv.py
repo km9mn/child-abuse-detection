@@ -1,79 +1,87 @@
+import sys
 import cv2
 import numpy as np
 import time
 import requests
+import os
 import json
+from threading import Thread
 
-url = 'https://4f9793ad14d0.ngrok.io/predict'
+from requests.models import Response
+
+#code = 'c2630900a041'
+url = sys.argv[1]
 step_size = 5
+
+class ThreadWithResult(Thread):
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None):
+        def function():
+            self.result = target(*args, **kwargs)
+        super().__init__(group=group, target=function, name=name, daemon=daemon)
+
+def send_frame(video_path, url):
+    print(os.path.basename(video_path)+ ' video sent!!')
+    resp = requests.post(url + '/predict', files={'file': open(video_path,'rb')})
+    print(os.path.basename(video_path)+ ' video got answer------------')
+    return resp.json()
 
 def main():
     cap = cv2.VideoCapture(0)
     idx = 1
     total = 0
     frames = list()
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    fps = cap.get(cv2.CAP_PROP_FPS) # 30
-    width  = cap.get(cv2.CAP_PROP_FRAME_WIDTH)   # float
-    height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)  # float
-    out = cv2.VideoWriter('test'+str(idx)+'.mp4', fourcc,fps, (int(width), int(height)))
-    model_ret = 1
+    video_path = 'C:/Users/Seogki/GoogleDrive/데이터청년캠퍼스_고려대과정/child-abuse-detection/biconvlstm_model/webcam_test/'
 
-    while(cap.isOpened()):
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    fps = cap.get(cv2.CAP_PROP_FPS) 
+    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))  
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  
+    filename = 'temp' + str(idx) + '.mp4'
+    out = cv2.VideoWriter(filename, fourcc,fps, (int(width), int(height)))
+    model_ret = 0
+    
+    while cap.isOpened():
         ret, frame = cap.read()
         frame = np.array(frame)
-        if model_ret == 0:
-            frame[-20:,-20:,0] = 0
-            frame[-20:,-20:,1] = 0
-            frame[-20:,-20:,2] = 255
-        else:
-            frame[-20:,-20:,0] = 255
-            frame[-20:,-20:,1] = 0
-            frame[-20:,-20:,2] = 0
-        cv2.imshow('frame',frame)
 
         if not ret:
+            print('video capture failed')
             break
+
         out.write(frame)
         
         total += 1
         frames.append(frame)
 
-        if (total%60==0):
-            print(idx,total)
-            idx +=1
-            filename = 'test'+str(idx)+'.mp4'
+        if total%60==0:
+            out.release()
+
+            request_thread = ThreadWithResult(target=send_frame, args=(video_path+filename, url))
+            request_thread.start()
+
+            idx = (idx + 1)%5
+
+            filename = 'temp' + str(idx) + '.mp4'  
             out = cv2.VideoWriter(filename, fourcc,fps, (int(width), int(height)))
+        
+        try:
+            model_ret = float(request_thread.result)
+        except:
+            pass
 
-            # frames 보내기
-            st_time = time.time()
-            print(np.array(frames).shape)
-            flatten_vid = np.array(frames)[::step_size,:,:,:].flatten()
-            print(flatten_vid.shape)
-            data = {
-                'frames':np.array(frames).shape[0]/step_size,
-                'width':width,
-                'height':height,
-                'flatten_vid':flatten_vid.tolist()
-            }
-            print(type(data))
-            with open("testing.json", "w") as json_file:
-                json.dump(data, json_file)
-
-            model_ret = requests.post(url, data=json.dumps(data))
-            print('model ret : ', model_ret)
-            print('model took : ',round(time.time()-st_time, 3),' sec')
-            
-
-            #model_ret = 1
-            ##############################################33
-            frames = list()
-
-        if idx>10:
-            break
-            
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+        
+        if model_ret > 50:
+            frame[::height-1,:,0] = frame[:,::width-1,0] = 0
+            frame[::height-1,:,1] = frame[:,::width-1,1] = 0
+            frame[::height-1,:,2] = frame[:,::width-1,2] = 255
+        else:
+            frame[::height-1,:,0] = frame[:,::width-1,0] = 255
+            frame[::height-1,:,1] = frame[:,::width-1,1] = 0
+            frame[::height-1,:,2] = frame[:,::width-1,2] = 0
+
+        cv2.imshow('frame',frame)
 
     cap.release()
     cv2.destroyAllWindows()

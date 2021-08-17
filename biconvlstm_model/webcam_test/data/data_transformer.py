@@ -12,7 +12,6 @@ class DatasetTransform(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        #img, label = self.dataset[idx]
-        img = self.dataset
+        img = self.dataset[idx]
         return self.transform(img)
 
