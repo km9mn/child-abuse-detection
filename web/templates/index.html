@@ -1,3 +1,11 @@
+{% with messages = get_flashed_messages() %} 
+	{% if messages %} 
+		<script> 
+			alert("{{messages[-1]}}") 
+		</script> 
+	{% endif %}
+{% endwith %}
+
 <!DOCTYPE HTML>
 
 <html>
@@ -63,7 +71,7 @@
 									<h2>Feugiat consequat</h2>
 									<p>Phasellus convallis elit id ullamcorper pulvinar. Duis aliquam turpis mauris, eu ultricies erat malesuada quis. Aliquam dapibus.</p>
 									<ul class="actions">
-										<li><a href="generic.html" class="button">Learn more</a></li>
+										<li><a href="gefneric.html" class="button">Learn more</a></li>
 									</ul>
 								</div>
 							</div>
@@ -128,23 +136,24 @@
 				<!-- Three -->
 					<section id="three" class="wrapper style1 fade-up">
 						<div class="inner">
-							<h2>괴도키즈</h2>
-							<p>실시간 아동학대방지 프로그램, 실시간으로 폭력을 감지하여 아이들을 보호하자<br>Real-time child abuse prevention program, protecting children by detecting violence in real time.</p>
+							<h1>괴도키즈</h1>
+							<p>실시간 아동학대방지 프로그램<br>Real-Time Child Abuse Detection Program<br>(protecting and prevneting children from violence in real time)</p>
 							<div class="split style1">
 								<section>
-									<form method="post" action="/post" name="login_form">
+									<form method="POST" action="/main" >
+										<!-- 액션 : 실행할 페이지(=링크) 메소드 : 딜리트/포스트/겟 등의 통신방법 버튼을 서브밋으로 설정하면 해당 폼 설정으로 실행됨 그럼 이만 -->
 										<div class="fields">
 											<div class="field half">
-												<label for="name">Email</label>
+												<label for="name">E-mail</label>
 												<input type="text" name="email" id="email" />
 											</div>
 											<div class="field half">
-												<label for="email">PassWord</label>
+												<label for="name">Password</label>
 												<input type="password" name="password" id="password" />
 											</div>
 											<div style="margin-top: 5px;">
 												<a href="register" style="margin-left: 30px;">회원가입</a> &nbsp;&nbsp;
-												
+
 											</div>
 											<!-- <div class="field">
 												<label for="message">Message</label>
@@ -152,7 +161,7 @@
 											</div> -->
 										</div>
 										<ul>
-											<ui><a href="main">Enter</a></ui>
+											<ui><button type="submit">Enter</button></ui>
 											<!-- <ui><a href="main"><button>Submit</button></a></ui> -->
 										</ul>
 									</form>
