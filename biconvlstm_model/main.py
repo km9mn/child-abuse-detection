@@ -127,14 +127,14 @@ def main():
     acc = list()
     prec = list()
     graph_path = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/BiConvLSTM_Violence_Detection_Spatiotemporal_Encoder/acc_graph/'
-
+    
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
             
             f_name = os.path.basename(args.resume)
-            graph = np.load(graph_path+'acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy')
+            graph = np.load(graph_path+'acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy', allow_pickle=True)
             print('loading model saved on ', re.findall(r'_t(.+).tar',f_name)[0])
 
             acc = graph[0].tolist()
@@ -166,6 +166,7 @@ def run_training(train_loader, val_loader, model, criterion, optimizer, best_pre
 
     epoch = 0
     print('run training start')
+    epoch_start = time.time()
     while True:
         # train for one epoch
         acc, loss = train(train_loader, model, criterion, optimizer, epoch)
@@ -195,6 +196,7 @@ def run_training(train_loader, val_loader, model, criterion, optimizer, best_pre
             }, is_best, args.arch + "_" + args.data_name + "_fold_" + str(args.kfold), starttime=starttime)#d=ID,
         
         epoch += 1
+        print('epcoch took : ', round(time.time()-epoch_start,2), ' sec')
 
 def train(train_loader, model, criterion, optimizer, epoch):
     batch_time = AverageMeter()
@@ -287,11 +289,13 @@ def validate(val_loader, model):
 
 
 def save_checkpoint(state, is_best,id='someid', starttime='tmp'): #id='someid'
-    filename = 'checkpoint.' + str(id) +'_t'+ starttime + '.tar' #str(id) +
+    save_model_path = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Server/model/'
+    filename = save_model_path + 'checkpoint.' + str(id) +'_t'+ starttime + '.tar' #str(id) +
     torch.save(state, filename)
     if is_best:
-        model_best_filename = 'model_best.' +str(id) +'_t' +starttime+'.tar' # str(id) + 
+        model_best_filename = save_model_path + 'model_best.' +str(id) +'_t' +starttime+'.tar' # str(id) + 
         shutil.copyfile(filename, model_best_filename)
+        
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):
