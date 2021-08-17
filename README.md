@@ -6,7 +6,14 @@
 팀원 : 김규민, 김규원, 김석기, 김호준, 이은서
 
 ```
+└── biconvlstm_model
+     └── acc_graph
+     └── data
+     └── networks
 └── data
-           └── youtube_crawler
 └── presentation
+└── web
+     └── static
+     └── templates
+└── webcam live test
 ```
