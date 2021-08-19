@@ -35,7 +35,7 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='E_bi_max_pool',
                     help='model architecture: ' +
                     ' | '.join(model_names) +
                     ' (default: E)')
-parser.add_argument('--t', '--transform', dest='transform', default='RF', type=str,
+parser.add_argument('--t', '--transform', dest='transform', default='RC', type=str,
                     help='type of data transform [R: resize, C: random crop and flip, RC: both] (default: R)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')

@@ -1,17 +1,13 @@
 import sys
 import cv2
 import numpy as np
-import time
 import requests
 import os
-import json
 from threading import Thread
 
-from requests.models import Response
-
-url = sys.argv[1]
-step_size = 5
-
+second = int(sys.argv[1])
+url = sys.argv[2]
+video = 0 if sys.argv[3]=='0' else sys.argv[3]
 class ThreadWithResult(Thread):
     def __init__(self, group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None):
         def function():
@@ -25,66 +21,74 @@ def send_frame(video_path, url):
     return resp.json()
 
 def main():
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(video)
     idx = 1
     total = 0
     frames = list()
-    video_path = 'C:/Users/Seogki/GoogleDrive/데이터청년캠퍼스_고려대과정/child-abuse-detection/biconvlstm_model/webcam_test/'
+    video_path = ''#'C:/Users/Seogki/GoogleDrive/데이터청년캠퍼스_고려대과정/child-abuse-detection/webcam live test/'
 
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    fps = cap.get(cv2.CAP_PROP_FPS) 
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fps = int(cap.get(cv2.CAP_PROP_FPS)) 
     width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))  
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  
     filename = 'temp' + str(idx) + '.mp4'
-    out = cv2.VideoWriter(filename, fourcc,fps, (int(width), int(height)))
-    model_ret = 0
-    
+    diff = int(abs(width - height)/2)
+    flag = 0
+
+    video_length = fps * second # 3초에 한번 영상 전송
+
+    if width > height:
+        width = height
+        flag = 0 
+    else:
+        height = width
+        flag = 1
+
+    width = 640
+    height = 640
+    out = cv2.VideoWriter(filename, fourcc, fps, (int(width), int(height)))
+    #model_ret = 0
+
     while cap.isOpened():
         ret, frame = cap.read()
-        frame = np.array(frame)
 
         if not ret:
             print('video capture failed')
             break
+
+        frame = np.array(frame)
+        frame = frame[diff:-diff,:,:] if flag else frame[:,diff:-diff,:]
+        frame = cv2.resize(frame, dsize=(width,height), interpolation=cv2.INTER_LANCZOS4)
 
         out.write(frame)
         
         total += 1
         frames.append(frame)
 
-        if total%60==0:
+        if total % video_length==0:
             out.release()
 
             request_thread = ThreadWithResult(target=send_frame, args=(video_path+filename, url))
             request_thread.start()
 
             idx = (idx + 1)%5
-
             filename = 'temp' + str(idx) + '.mp4'  
+            
+            if os.path.isfile(filename):
+                os.remove(filename)
+
             out = cv2.VideoWriter(filename, fourcc,fps, (int(width), int(height)))
-        
-        try:
-            model_ret = float(request_thread.result)
-        except:
-            pass
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        
-        if model_ret > 50:
-            frame[::height-1,:,0] = frame[:,::width-1,0] = 0
-            frame[::height-1,:,1] = frame[:,::width-1,1] = 0
-            frame[::height-1,:,2] = frame[:,::width-1,2] = 255
-        else:
-            frame[::height-1,:,0] = frame[:,::width-1,0] = 255
-            frame[::height-1,:,1] = frame[:,::width-1,1] = 0
-            frame[::height-1,:,2] = frame[:,::width-1,2] = 0
 
-        cv2.imshow('frame',frame)
+        cv2.imshow('CCTV',frame)
 
     cap.release()
     cv2.destroyAllWindows()
 
+    resp = requests.get(url + '/end_stream')
+    print('end stream : ',resp.text)
     return
 
 main()

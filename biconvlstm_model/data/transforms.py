@@ -11,7 +11,6 @@ class SelectFrames():
         
         frame_count = clip.shape[0]
         step_size = frame_count // self.num_frames
-
         clip = clip[:self.num_frames*step_size,:,:,:]
         clip = clip[::step_size,:,:,:]
         return clip
