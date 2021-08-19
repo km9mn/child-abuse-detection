@@ -6,7 +6,7 @@ import torchvision.models as models
 class ConvEncoder(nn.Module):
     def __init__(self):
         super(ConvEncoder, self).__init__()
-        vggnet = models.__dict__['vgg13_bn'](pretrained=True)
+        vggnet = models.__dict__['vgg19_bn'](pretrained=True)
         # Remove last max pooling layer of vggnet
         self.encoder = nn.Sequential(*list(vggnet.features.children())[:-1])
         #self.features = vggnet.features
