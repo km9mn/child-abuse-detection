@@ -191,6 +191,18 @@ def video():
     """
     return render_template('video.html', video_table_data=video_data, data_length=len(video_data), video_info=test, video_table_data_t=video_data2)
 
+@app.route('/report/<video_id>')
+def report_police(video_id):
+    # report 처리
+    return 'report ' + str(video_id)
+    return render_template('list.html')
+
+@app.route('/safe/<video_id>')
+def safe_video(video_id):
+    # safe 처리
+    return 'safe ' + str(video_id)
+    return render_template('list.html')
+    
 if __name__ == '__main__':
       app.run(debug=True)
 
