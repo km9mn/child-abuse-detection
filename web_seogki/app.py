@@ -6,7 +6,6 @@ import datetime
 import pandas as pd
 from flask import Flask, render_template, request, redirect, Response
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, logout_user
 from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
@@ -18,9 +17,7 @@ app.secret_key = 'super secret key'
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///child_abuse_detection_database.db'
-#app.config['MAX_CONTENT_LENGTH'] = 15 * 640 * 640
 db = SQLAlchemy(app)
-migrate = Migrate()
 
 def hash_password(password):
     password.encode('utf-8')
@@ -44,21 +41,25 @@ def convert_unixtime(date_time):
            
 def check_login(email, pw):
     result = User.query.filter_by(email=email, pw=pw).all()
-    print(result)
-    return False if result else True
+    return (False, None, None) if not result else (True, result[0].id ,result[0].loc_id)
 
+@app.route('/index')
 @app.route('/')
 def home():
     return render_template('index.html')
 
+current_user = None
+current_location = None
 @app.route('/main',methods=['GET','POST'])
 def maain():
+    global current_user, current_location
     if request.method == 'GET':
         return render_template('main.html')
     else:
         email = request.form['email'] 
         password = hash_password(request.form['password'])
-        if check_login(email,password):
+        status, current_user, current_location = check_login(email,password)
+        if status:
             return render_template('main.html')
         else:
             flash("please put correct email or password")
@@ -106,102 +107,75 @@ def register():
             flash('register finished')
             return render_template('index.html')
 
-@app.route('/list')
-def listing():
-    return render_template('list.html')
-
 @app.route('/main')
 def mainpage():
     return render_template('main.html')
 
-video_data = [
-    {
-        'index':"1",
-        'place':"우리집1-주소는이러쿵저러쿰",
-        'time': time.time(),
-        'accuracy':"80%",
-        'video_info':'testing',
-        'video_path':"/static/violence/test3.mp4"
-    },
-{
-        'index':"2",
-        'place':"우리집2-주소는이러쿵저러쿰",
-        'time': time.time(),
-        'accuracy':"180%",
-        'video_info':'testing123213',
-        'video_path':"/static/violence/test4.mp4"
-    },
-    {
-        'index':"3",
-        'place':"우리집3-주소는이러쿵저러쿰",
-        'time': time.time(),
-        'accuracy':"820%",
-        'video_info':'testing please',
-        'video_path':"/static/violence/test5.mp4"
-    },
-    {
-        'index':"4",
-        'place':"우리집4-주소는이러쿵저러쿰",
-        'time': time.time(),
-        'accuracy':"803%",
-        'video_info':'testin1231221331123123g',
-        'video_path':"/static/violence/test6.mp4"
-    }
-]
-video_data2 = [
-    {
-        'index':"3",
-        'place':"우리집3-주소는이러쿵저러쿰",
-        'time': time.time(),
-        'accuracy':"820%",
-        'video_info':'testing please',
-        'video_path':"/static/violence/test5.mp4"
-    },
-    {
-        'index':"4",
-        'place':"우리집4-주소는이러쿵저러쿰",
-        'time': time.time(),
-        'accuracy':"803%",
-        'video_info':'testin1231221331123123g',
-        'video_path':"/static/violence/test6.mp4"
-    },
-    {
-        'index':"1",
-        'place':"우리집1-주소는이러쿵저러쿰",
-        'time': time.time(),
-        'accuracy':"80%",
-        'video_info':'testing',
-        'video_path':"/static/violence/test3.mp4"
-    },
-    {
-        'index':"2",
-        'place':"우리집2-주소는이러쿵저러쿰",
-        'time': time.time(),
-        'accuracy':"180%",
-        'video_info':'testing123213',
-        'video_path':"/static/violence/test4.mp4"
-    }
-]
 @app.route('/video')
 def video():
-    test = """
-    Located in sdafpk
-    Model ACcuracy : 50%
-    Stuff like that
-    """
-    return render_template('video.html', video_table_data=video_data, data_length=len(video_data), video_info=test, video_table_data_t=video_data2)
+    # get data by current_location
+    video_data = Video.query.filter_by(loc_id=current_location).all()
+    data = list()
+    print(video_data)
+    for item in video_data:
+        daycare_info = DaycareCenter.query.filter_by(id=item.dc_id).one()
+        daycare_description = "어린이집명 : {}<br>원장 : {}<br>주소 : {}<br>전화번호 : {}-{}-{}".format(daycare_info.name,daycare_info.chief_staff_name,daycare_info.address, daycare_info.ph_num1,daycare_info.ph_num2,daycare_info.ph_num3)
+        data.append({
+            "index":item.id, 
+            "place":daycare_info.name,
+            "time":convert_datetime(item.detection_time),
+            "time_unix":item.detection_time,
+            "accuracy":str(item.accuracy) + ' %',
+            "accuracy_":item.accuracy,
+            "video_path":"/static/uncertain/" + item.name,
+            "video_info":daycare_description          
+            })
+
+    acc_sorted_data = sorted(data, key=lambda x: int(x['accuracy_']), reverse=True)
+    time_sorted_data = sorted(data, key=lambda x:int(x['time_unix']))
+    return render_template('video.html', 
+                            acc_sorted_data=acc_sorted_data,
+                            time_sorted_data=time_sorted_data,
+                            data_length=len(video_data), 
+                            video_info="Video Description"
+                            ) 
+
+@app.route('/list')
+def listing():
+    report_data = ReportList.query.filter_by(loc_id=current_location).all()
+    data = list()
+    
+    for item in report_data:
+        daycare_info = DaycareCenter.query.filter_by(id=item.dc_id).one()
+        video_info = Video.query.filter_by(id=item.vid_id).one()
+        daycare_description = "영상 정확도 : {}<br>어린이집명 : {}<br>원장 : {}<br>주소 : {}<br>전화번호 : {}-{}-{}".format(str(video_info.accuracy) + '%', daycare_info.name,daycare_info.chief_staff_name,daycare_info.address, daycare_info.ph_num1,daycare_info.ph_num2,daycare_info.ph_num3)
+        data.append({
+            "index":item.id, 
+            "daycare":daycare_info.name,
+            "time":convert_datetime(item.time),
+            "time_unix":item.time,
+            "video_path":"/static/violence/" + video_info.name,
+            "video_info":daycare_description,
+            "police_station":item.police_name,
+            "police_status":item.status      
+            })
+
+    time_sorted_data = sorted(data, key=lambda x:int(x['time_unix']), reverse=True)
+    return render_template('list.html', 
+                            time_sorted_data=time_sorted_data,
+                            data_length=len(time_sorted_data), 
+                            video_info="Video Description"
+                            ) 
 
 @app.route('/report/<video_id>')
 def report_police(video_id):
     # report 처리
-    return 'report ' + str(video_id)
-    return render_template('list.html')
+    return redirect(url_for('video'))#render_template('list.html')
 
 @app.route('/safe/<video_id>')
 def safe_video(video_id):
     # safe 처리
-    return 'safe ' + str(video_id)
-    return render_template('list.html')
+    return redirect(url_for('video'))#render_template('list.html')
     
 if __name__ == '__main__':
       app.run(debug=True)
