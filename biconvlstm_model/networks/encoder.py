@@ -11,8 +11,11 @@ class ConvEncoder(nn.Module):
         self.encoder = nn.Sequential(*list(vggnet.features.children())[:-1])
         #self.features = vggnet.features
     def forward(self, clips):
+        
         # Permute to run encoder on batch of each frame
         # NOTE: This requires clips to have the same number of frames!!
         frame_ordered_clips = clips.permute(1, 0, 2, 3, 4)
-        clips_feature_maps = [self.encoder(frame) for frame in frame_ordered_clips]
+       
+        clips_feature_maps = [self.encoder(frame) for frame in  frame_ordered_clips]
+        
         return torch.stack(clips_feature_maps, dim=0).permute(1, 0, 2, 3, 4)

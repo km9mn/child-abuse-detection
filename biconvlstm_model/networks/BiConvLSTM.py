@@ -51,6 +51,10 @@ class BiConvLSTMCell(nn.Module):
 
     def forward(self, input_tensor, cur_state):
         h_cur, c_cur = cur_state
+        # import numpy as np
+        # print('input_tensor : ', np.shape(input_tensor))
+        
+        # print('h_cur : ', np.shape(h_cur))
 
         combined = torch.cat([input_tensor, h_cur], dim=1)  # concatenate along channel axis
         combined_conv = self.conv(combined)

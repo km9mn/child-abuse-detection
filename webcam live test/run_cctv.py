@@ -1,6 +1,7 @@
 import sys
 import cv2
 import numpy as np
+import time
 import requests
 import os
 from threading import Thread
@@ -22,7 +23,7 @@ def send_frame(video_path, url):
 
 def main():
     cap = cv2.VideoCapture(video)
-    idx = 1
+    idx = 0
     total = 0
     frames = list()
     video_path = ''#'C:/Users/Seogki/GoogleDrive/데이터청년캠퍼스_고려대과정/child-abuse-detection/webcam live test/'
@@ -32,20 +33,24 @@ def main():
     width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))  
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  
     filename = 'temp' + str(idx) + '.mp4'
-    diff = int(abs(width - height)/2)
-    flag = 0
+    
+    if os.path.isfile(filename):
+        os.remove(filename)
+
+    # diff = int(abs(width - height)/2)
+    # flag = 0
 
     video_length = fps * second # 3초에 한번 영상 전송
 
-    if width > height:
-        width = height
-        flag = 0 
-    else:
-        height = width
-        flag = 1
+    # if width > height:
+    #     width = height
+    #     flag = 0 
+    # else:
+    #     height = width
+    #     flag = 1
 
-    width = 640
-    height = 640
+    #width = 640
+    #height = 640
     out = cv2.VideoWriter(filename, fourcc, fps, (int(width), int(height)))
     #model_ret = 0
 
@@ -56,8 +61,9 @@ def main():
             print('video capture failed')
             break
 
-        frame = np.array(frame)
-        frame = frame[diff:-diff,:,:] if flag else frame[:,diff:-diff,:]
+        #frame = np.array(frame)
+        #frame = frame[diff:-diff,:,:] if flag else frame[:,diff:-diff,:]
+        #frame = frame[:-2*diff,:,:] if flag else frame[:,:-2*diff,:]
         frame = cv2.resize(frame, dsize=(width,height), interpolation=cv2.INTER_LANCZOS4)
 
         out.write(frame)
@@ -73,11 +79,10 @@ def main():
 
             idx = (idx + 1)%5
             filename = 'temp' + str(idx) + '.mp4'  
-            
             if os.path.isfile(filename):
                 os.remove(filename)
-
             out = cv2.VideoWriter(filename, fourcc,fps, (int(width), int(height)))
+
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -91,4 +96,5 @@ def main():
     print('end stream : ',resp.text)
     return
 
-main()
+if __name__ == '__main__':
+    main()

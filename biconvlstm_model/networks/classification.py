@@ -17,6 +17,8 @@ class Classification(nn.Module):
                                   nn.Linear(256, 10),
                                   nn.Tanh(),
                                   nn.Linear(10, num_classes))
+                                  # nn.Softmax(dim =1))
+
 
     def forward(self, x):
         x = self.conv_bn(F.relu(x))

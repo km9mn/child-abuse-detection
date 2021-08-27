@@ -8,7 +8,6 @@ from torch.utils.data import Dataset
 
 from data.data_label_factory import label_factory
 def read_video(filename):
-    print(filename)
     frames = []
     cap = cv2.VideoCapture(filename)
     while(cap.isOpened()):
@@ -21,7 +20,6 @@ def read_video(filename):
             # If the number of captured frames is equal to the total number of frames, we stop
             break
     cap.release()
-    print(np.array(frames).shape)
     video = np.stack(frames)
     return video
 

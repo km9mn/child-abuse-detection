@@ -134,7 +134,7 @@ def main():
             print("=> loading checkpoint '{}'".format(args.resume))
             
             f_name = os.path.basename(args.resume)
-            graph = np.load(graph_path+'acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy', allow_pickle=True)
+            graph = np.load(graph_path+'석기acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy', allow_pickle=True)
             print('loading model saved on ', re.findall(r'_t(.+).tar',f_name)[0])
 
             acc = graph[0].tolist()
@@ -181,7 +181,7 @@ def run_training(train_loader, val_loader, model, criterion, optimizer, best_pre
 
         # graph 및 acc,loss,prec 저장
         save_accuracy_graph(graph_path, accuray_list, loss_list, precision_list, starttime)
-        np.save(graph_path + 'acc_loss_prec_' + starttime ,[accuray_list,loss_list,precision_list])
+        np.save(graph_path + '석기acc_loss_prec_' + starttime ,[accuray_list,loss_list,precision_list])
 
         # remember best prec@1 and save checkpoint
         is_best = prec > best_prec
@@ -290,7 +290,7 @@ def validate(val_loader, model):
 
 def save_checkpoint(state, is_best,id='someid', starttime='tmp'): #id='someid'
     save_model_path = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Server/model/'
-    filename = save_model_path + 'checkpoint.' + str(id) +'_t'+ starttime + '.tar' #str(id) +
+    filename = save_model_path + '석기checkpoint.' + str(id) +'_t'+ starttime + '.tar' #str(id) +
     torch.save(state, filename)
     if is_best:
         model_best_filename = save_model_path + 'model_best.' +str(id) +'_t' +starttime+'.tar' # str(id) + 
