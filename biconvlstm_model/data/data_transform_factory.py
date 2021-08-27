@@ -54,8 +54,16 @@ def __resize224(clip):
 
 
 def __resize256(clip):
-    return np.array([cv2.resize(img, (256, 256)) for img in clip])
-
+    (h,w) = clip[0].shape[:2]
+    if w > h:
+        h = 256
+        w = int(w/h)
+        dim = (h,w)
+    else:
+        w = 256
+        h = int(h/w)
+        dim=(h,w)
+    return np.array([cv2.resize(img, dim) for img in clip])
 
 def transform_factory(transform):
     if transform == 'R': return __resize224
