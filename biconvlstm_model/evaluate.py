@@ -1,5 +1,3 @@
-# Based on code from https://github.com/pytorch/examples/blob/master/imagenet/main.py
-
 import datetime
 import argparse
 import os

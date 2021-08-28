@@ -6,7 +6,6 @@ import random
 import shutil
 import time
 import numpy as np
-import cv2
 import torch
 import torch.nn as nn
 import torch.optim
@@ -18,7 +17,7 @@ from data.data_reader import DatasetReader
 from data.data_splitter import DatasetSplit
 from data.data_transformer import DatasetTransform
 from data.transforms import SelectFrames, FrameDifference, Downsample, TileVideo, RandomCrop, Resize, RandomHorizontalFlip, Normalize, ToTensor
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 
 model_names = ['E', 'E_bi', 'E_bi_avg_pool', 'E_bi_max_pool','resnet_lstm','resnet_bilstm']
@@ -129,7 +128,7 @@ def main():
     acc = list()
     prec = list()
     f1score = list()
-    graph_path = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/BiConvLSTM_Violence_Detection_Spatiotemporal_Encoder/acc_graph/규원/'
+    graph_path = '/acc_graph/'
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -137,7 +136,7 @@ def main():
             print("=> loading checkpoint '{}'".format(args.resume))
             
             f_name = os.path.basename(args.resume)
-            graph = np.load(graph_path+'규원acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy',allow_pickle=True)
+            graph = np.load(graph_path+'acc_loss_prec_' + re.findall(r'_t(.+).tar',f_name)[0]+'.npy',allow_pickle=True)
             print('loading model saved on ', re.findall(r'_t(.+).tar',f_name)[0])
 
             acc = graph[0].tolist()
@@ -333,10 +332,10 @@ def validate(val_loader, model):
 
 
 def save_checkpoint(state, is_best,id='someid', starttime='tmp'): #id='someid'
-    filename = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Test Data/규원/규원checkpoint.' + str(id) +'_t'+ starttime + '.tar'
+    filename = 'checkpoint.' + str(id) +'_t'+ starttime + '.tar'
     torch.save(state, filename)
     if is_best:
-        model_best_filename = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Test Data/규원/규원model_best.' +str(id) +'_t' +starttime+'.tar' # str(id) + 
+        model_best_filename = 'model_best.' +str(id) +'_t' +starttime+'.tar'
         shutil.copyfile(filename, model_best_filename)
 
 class AverageMeter(object):
@@ -380,10 +379,6 @@ def network_factory(arch):
 
     if arch == 'E':
         from networks.E import VP
-    elif arch == 'E_bi':
-        from networks.E_bi import VP
-    elif arch == 'E_bi_avg_pool':
-        from networks.E_bi_avg_pool import VP
     elif arch == 'E_bi_max_pool':
         from networks.E_bi_max_pool import VP
     elif arch == 'resnet_bilstm':
@@ -419,7 +414,6 @@ def save_accuracy_graph(path, accuracy, loss, prec, f1, starttime, filename='규
 
     plt.legend()
     plt.savefig(path+filename+starttime+'_acc_loss.jpg')
-    #plt.show()
   
 if __name__ == '__main__':
     main()
