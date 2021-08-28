@@ -3,86 +3,54 @@
 2021 빅데이터 청년인재 고려대과정 10조 - 괴도키즈
 ---
 
-팀원 : 김규민, 김규원, 김석기, 김호준, 이은서
 
+- **프로젝트 개요** : CNN + BiLSTM을 통한 CCTV 실시간 아동학대 감지 시스템
+
+- **프로젝트 작업 기간** : 2021.07.04 ~ 2021.08.28
+
+- **팀원** : 김규민, 김규원, 김석기, 김호준, 이은서
+
+
+![Logo](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/26e41d62-5d22-48e0-ad00-712422ba4884/%EA%B4%B4%EB%8F%84%ED%80%B4%EC%A6%88.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20210828%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20210828T004045Z&X-Amz-Expires=86400&X-Amz-Signature=ba5ca45a58050060fd58e6fc02b63d7a1eb68909bdb626ca2267295647bd1932&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22%25EA%25B4%25B4%25EB%258F%2584%25ED%2580%25B4%25EC%25A6%2588.png%22)
+
+# Main Feature
+
+1. 아동학대 지속을 방지하고, 즉시 아이를 보호할 수 있도록 **실시간 아동학대 감지 및 신고프로젝트**
+2. 폭력이 일어나면 관할 경찰서에 신고하고, 학대 정황이 모호하다고 판단하면 그 영상을 **전문가에 의해 학대 정황이 확인**
+
+# Service Flow
+
+![service flow](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/da14f93b-2785-426a-a980-ed89dcf59966/%E3%84%B4%E3%84%B7%E3%84%B1.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20210828%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20210828T004037Z&X-Amz-Expires=86400&X-Amz-Signature=b374bc6ace620946b6d7bcecf5933e91d9ab3705643c13796f490c2195f181cb&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22%25E3%2584%25B4%25E3%2584%25B7%25E3%2584%25B1.png%22)
+
+
+# System Architecture
+
+![](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/90ea0c7c-8e37-4940-8dc2-ce52bc4630f7/%EA%B7%B8%EB%A6%BC2.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20210828%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20210828T004104Z&X-Amz-Expires=86400&X-Amz-Signature=b9d047fa5a5a296cbdd4aeee4ac60be5797bec1e83399b6be2462ebcea6f2f79&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22%25EA%25B7%25B8%25EB%25A6%25BC2.png%22)
 
 # Repository
 
 
 ```
 └── biconvlstm_model
-     └── acc_graph
-     └── data
-     └── networks
 └── data
-     └── ipynb
 └── deep-learning-server
 └── presentation
 └── web
-     └── static
-     └── templates
 └── webcam live test
 ```
 
-# BiConvLSTM Model
+## BiConvLSTM Model
+- 모델을 위한 데이터 전처리 및 네트워크
+- 모델 생성 관리
+## Data
+- 학습 데이터 전처리
+## Deep Learning Server
+- CCTV 화면 속 아동학대 탐지 모델
+## Web
+- 괴도키즈 전문가용 Web 시스템
 
-## acc_graph
+## Webcam Live Test
+- CCTV 화면을 표현할 수 있도록 Webcam 영상 실시간 전송
 
-학습 결과를 graph로 저장하는 폴더
-
-## data
-
-### 데이터 가공
-
-- `data_reader` : 데이터를 불러오는 부분
-- `data_label_factory` : 데이터 파일명을 통해 데이터 라벨링
-- `data_split` : 데이터셋 Split에 이용
-- `data_transform_factory` : 데이터 편집 관련 함수
-- `data_transformer` : 데이터와 데이터 라벨 관리 
-- `transform` : 다양한 변환 클래스
-
-## network
-
-### 사용된 네트워크 관리
-- `ConvLSTM` : Conv Layer + LSTM Cell
-- `BiConvLSTM` : Conv Layer + BiLSTM Cell
-- `resnet_bilstm` : RESNET + BiLSTM 네트워크
-- `resnet_lstm` : RESNET + LSTM 네트워크
-- `E` : VGG19 + LSTM 네트워크
-- `E_bi_max_pool` : VGG19 + BiLSTM 네트워크
-
-# Data
-
-### iypnb
-
-
-
-# Presentation
-
-# Web
-
-```
-python app.py
-```
-
-`Google Colab`에서 구동
-
-# Deep Learning Server
-
-`deep learning server.ipynb`로 `Google Colab`에서 `ngrok`을 이용하여 `colab`의 로컬 네트워크에 터널을 생성하여 외부에서 접근할 수 있도록 구현  
-
-# Webcam Live Test
-
-```
-python "NUMBER OF FRAMES" "SERVER PATH" "TEST VIDEO PATH"
-```
-으로 실행 가능합니다
-
-- NUMBER OF FRAMES - 모델의 입력을 몇초 단위로 넣을지 정해집니다.
-
-- SERVER PATH - 딥러닝 모델의 서버의 주소를 받습니다.
-
-- TEST VIDEO PATH 
-     - '0' : webcam을 source로 사용
-     - 'path' : 해당된 주소의 영상을 source로 사용  
-
+###
+작성 : 
