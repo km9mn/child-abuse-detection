@@ -51,3 +51,6 @@
 
 ## Webcam Live Test
 - CCTV 화면을 표현할 수 있도록 Webcam 영상 실시간 전송
+
+###
+작성 : [김석기](https://github.com/ikgoes)
