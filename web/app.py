@@ -7,7 +7,7 @@ import datetime
 import pandas as pd
 import numpy as np
 from flask import Flask, url_for, redirect, render_template, request
-from flask_ngrok import run_with_ngrok
+#from flask_ngrok import run_with_ngrok
 from flask_login import LoginManager, UserMixin, login_user, logout_user
 from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
@@ -20,7 +20,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///child_abuse_detection_database.db'
 db = SQLAlchemy(app)
-run_with_ngrok(app)
+#run_with_ngrok(app)
 
 def get_hashed_password(password):
     h = hashlib.sha256()
