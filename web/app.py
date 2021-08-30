@@ -4,11 +4,8 @@ import time
 import shutil
 import hashlib
 import datetime
-import pandas as pd
 import numpy as np
 from flask import Flask, url_for, redirect, render_template, request
-#from flask_ngrok import run_with_ngrok
-from flask_login import LoginManager, UserMixin, login_user, logout_user
 from flask_login import current_user
 from flask_sqlalchemy import SQLAlchemy
 from flask import flash

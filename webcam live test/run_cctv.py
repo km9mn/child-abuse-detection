@@ -91,9 +91,6 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
-
-    resp = requests.get(url + '/end_stream')
-    print('end stream : ',resp.text)
     return
 
 if __name__ == '__main__':
