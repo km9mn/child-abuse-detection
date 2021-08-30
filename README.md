@@ -39,18 +39,4 @@
 └── webcam live test
 ```
 
-## BiConvLSTM Model
-- 모델을 위한 데이터 전처리 및 네트워크
-- 모델 생성 관리
-## Data
-- 학습 데이터 전처리
-## Deep Learning Server
-- CCTV 화면 속 아동학대 탐지 모델
-## Web
-- 괴도키즈 전문가용 Web 시스템
-
-## Webcam Live Test
-- CCTV 화면을 표현할 수 있도록 Webcam 영상 실시간 전송
-
-###
 작성 : [김석기](https://github.com/ikgoes)
