@@ -39,7 +39,6 @@ def main():
 
     video_length = fps * second # 3초에 한번 영상 전송
 
-
     height = int(height/width * 640)
     width = 640
     out = cv2.VideoWriter(filename, fourcc, fps, (int(width), int(height)))
@@ -50,10 +49,7 @@ def main():
         if not ret:
             print('video capture failed')
             break
-    
-        #frame = np.array(frame)
-        #frame = frame[diff:-diff,:,:] if flag else frame[:,diff:-diff,:]
-        #frame = frame[:-2*diff,:,:] if flag else frame[:,:-2*diff,:]
+
         frame = cv2.resize(frame, dsize=(width,height), interpolation=cv2.INTER_LANCZOS4)
 
         out.write(frame)
