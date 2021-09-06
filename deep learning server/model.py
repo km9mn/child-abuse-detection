@@ -1,4 +1,7 @@
 # coding: utf-8
+import os
+import time
+import numpy as np
 from flask_sqlalchemy import SQLAlchemy
 
 
@@ -78,3 +81,38 @@ class Video(db.Model):
 
     dc = db.relationship('DaycareCenter', primaryjoin='Video.dc_id == DaycareCenter.id', backref='videos')
     loc = db.relationship('Location', primaryjoin='Video.loc_id == Location.id', backref='videos')
+
+def add_video_db(db, video_path, daycare_name, accuracy, status=0):
+    daycare_center = DaycareCenter.query.filter_by(name=daycare_name).one()
+
+    video = Video(
+        detection_time = time.time() + 9 * 3600,
+        name = os.path.basename(video_path),
+        accuracy = round(accuracy,2),
+        status = status,
+        loc_id = daycare_center.loc_id,
+        dc_id = daycare_center.id
+        )
+
+    db.session.add(video)
+    db.session.commit()
+    return video
+
+def add_report_db(db, video_info):
+    police_station = ['답십리지구대', '용신지구대', '청량리파출소', '제기파출소', '전농1파출소', '전농2파출소','장안1파출소', '장안2파출소', '이문지구대', '휘경파출소', '회기파출소']
+    
+    video = Video.query.filter_by(name=video_info.name).one()
+    video.status = 1
+    
+    report_data = ReportList(
+        time = time.time() + 9 * 3600, 
+        police_name = np.random.choice(police_station, 1)[0],
+        status = '출동 전',
+        loc_id = video.loc_id,
+        dc_id = video.dc_id,
+        vid_id = video.id
+    )
+    db.session.add(report_data)
+    db.session.commit()
+
+    return report_data

@@ -1,80 +1,205 @@
 import os
-import cv2
-import numpy as np 
 import time
-import datetime
-import pandas as pd
-import numpy as np
-from flask_sqlalchemy import SQLAlchemy
-from flask import flash
-
-from model import *
-import random
 import shutil
 import json
+import hashlib
+import datetime
+import numpy as np
+
 import torch
-import torch.nn as nn
 import torch.optim
 import torch.utils.data
-import matplotlib.pyplot as plt
-from torchvision import transforms
-from flask import Flask, url_for, redirect, render_template, request
-from main import network_factory
-from time_conversion import convert_datetime
-from data.data_reader import DatasetReader
-from data.data_splitter import DatasetSplit
-from data.data_transformer import DatasetTransform
-from data.transforms import SelectFrames, FrameDifference, Downsample, TileVideo, RandomCrop, Resize, RandomHorizontalFlip, Normalize, ToTensor
 
-def graph_cctv_stats(violence,uncertain,end_time,duration=3, year=2021):
-    from matplotlib import pyplot as plt
-    import matplotlib.patches as mpatches 
-    plt.rcParams["figure.figsize"] = [10, 2]
+from model import add_video_db, add_report_db, Video, ReportList, DaycareCenter, Location, User
+from flask_sqlalchemy import SQLAlchemy
+from flask_ngrok import run_with_ngrok
+from flask import Flask, url_for, redirect, render_template, request, flash
+from dl_model import load_model, data_loader
+from data.data_reader import read_video
 
-    st_t = 0
-    en_t = int(end_time)
-    year = [year]
+video_status = {'need_check':'0', 'reported':'1', 'safe':'2'}
 
-    for i in range(0,en_t,3):
-        if i in violence:
-            plt.barh(year, [duration], left=i, color="red")
-        elif i in uncertain:
-            plt.barh(year, [duration], left=i, color="yellow")
+model_path = '/content/drive/Shareddrives/2021청년인재_고려대과정_10조/Test Data/호준/호준model_best.E_bi_max_pool_ALL_fold_0_t2021-08-27 01:04:46.tar'
+
+args = {
+    'arch': 'E_bi_max_pool',
+    'workers':1,
+    'batch-size':1,
+    'evalmodel':model_path,
+    'kfold':0,
+    'split':5,
+    'frames':5,
+    'lr':1e-6,
+    'weight_decay':1e-1
+}
+
+model = load_model(args,model_path)        
+daycare_center_name = '예은어린이집'
+violence_threshold = 90
+uncertain_threshold = 80
+
+# 영상 저장을 위한 변수
+save_video_path = '/content/drive/Shareddrives/2021청년인재_고려대과정_10조/Web/static/saved video/'
+save_violence_path = '/content/drive/Shareddrives/2021청년인재_고려대과정_10조/Web/static/violence/'
+save_uncertain_path = '/content/drive/Shareddrives/2021청년인재_고려대과정_10조/Web/static/uncertain/'
+
+app = Flask(__name__,static_folder='static',template_folder='templates')
+app.secret_key = 'super secret key'
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///child_abuse_detection_database.db'
+db = SQLAlchemy(app)
+run_with_ngrok(app)   #starts ngrok when the app is run
+
+def get_hashed_password(password):
+    h = hashlib.sha256()
+    h.update(password.encode('ascii'))
+    return h.hexdigest()
+
+def check_email(email):
+    result = User.query.filter_by(email=email).all()
+    return True if result else False
+
+def convert_datetime(unixtime):
+    """Convert unixtime to datetime"""
+    date = datetime.datetime.fromtimestamp(unixtime).strftime('%Y-%m-%d %H_%M_%S')
+    return date
+    
+def convert_unixtime(date_time):
+    """Convert datetime to unixtime"""
+    unixtime = datetime.datetime.strptime(date_time,'%Y-%m-%d %H_%M_%S').timestamp()
+    return unixtime
+
+def check_login(email, pw):
+    result = User.query.filter_by(email=email, pw=pw).all()
+    return (False, None, None) if not result else (True, result[0].id ,result[0].loc_id)
+
+@app.route('/index')
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+current_user = None
+current_location = None
+@app.route('/main',methods=['GET','POST'])
+def maain():
+    global current_user, current_location
+    if request.method == 'GET':
+        return render_template('main.html')
+    else:
+        email = request.form['email'] 
+        password = get_hashed_password(request.form['password'])
+        status, current_user, current_location = check_login(email,password)
+        if status:
+            return render_template('main.html')
         else:
-            plt.barh(year, [duration], left=i, color="green")
+            flash("please put correct email or password")
+            return render_template('index.html')
 
-    plt.yticks([])
-    plt.xticks([st_t]+violence+uncertain+[en_t])
+@app.route('/logout')
+def logout():
+    return render_template('index.html')
+
+@app.route('/register',methods=['GET','POST'])
+def register():
+    if request.method == 'GET':
+        return render_template('register.html')
+    else:
+        name = request.form.get('name')
+        password = get_hashed_password(request.form.get('password'))
+        email = request.form.get('email')
+        officenum = request.form.get('officenum')
+        location1 = request.form.get('locate1')
+        location2 = request.form.get('locate2')
+        department = request.form.get('dept')
+        ph1 = request.form.get('ph_num1')
+        ph2 = request.form.get('ph_num2')
+        ph3 = request.form.get('ph_num3')
+        if check_email(email):
+            flash('email already exists')
+            return render_template('register.html')
+        elif not (name and password and email and officenum and location1 and location2 and department and ph1 and ph2 and ph3):
+            flash('fill all the area')
+            return render_template('register.html')
+        else:
+            location_id = Location.query.filter(Location.name==location1+' '+location2).one().id
+            user = User(
+                email=email,
+                pw=password,
+                office_num=officenum,
+                department=department,
+                name=name,
+                ph_num1=ph1,
+                ph_num2=ph2,
+                ph_num3=ph3,
+                loc_id = location_id)
+            db.session.add(user)
+            db.session.commit()
+            flash('register finished')
+            return render_template('index.html')
+
+@app.route('/video')
+def video():
+    # get data by current_location
+    video_data = Video.query.filter_by(loc_id=current_location, status=video_status['need_check']).all()
+
+    data = list()
+    for item in video_data:
+        daycare_info = DaycareCenter.query.filter_by(id=item.dc_id).one() 
+        daycare_description = "어린이집명 : {}<br>원장 : {}<br>주소 : {}<br>전화번호 : {}-{}-{}".format(daycare_info.name,daycare_info.chief_staff_name,daycare_info.address, daycare_info.ph_num1,daycare_info.ph_num2,daycare_info.ph_num3)
+        data.append({
+            "index":item.id, 
+            "place":daycare_info.name,
+            "time":convert_datetime(item.detection_time),
+            "time_unix":item.detection_time,
+            "accuracy":str(item.accuracy) + ' %',
+            "accuracy_":item.accuracy,
+            "video_path":item.name,
+            "video_info":daycare_description          
+            })
+
+    acc_sorted_data = sorted(data, key=lambda x: int(x['accuracy_']), reverse=True)
+    time_sorted_data = sorted(data, key=lambda x:int(x['time_unix']), reverse=True)
+    return render_template('video.html', 
+                            acc_sorted_data=acc_sorted_data,
+                            time_sorted_data=time_sorted_data,
+                            data_length=len(video_data), 
+                            video_info="Video Description") 
+
+@app.route('/list')
+def listing():
+    report_data = ReportList.query.filter_by(loc_id=current_location).all()
+    data = list()
     
-    var_V = mpatches.Patch(color='red',label = 'violence')
-    var_U = mpatches.Patch(color='yellow',label = 'uncertain')
-    var_S = mpatches.Patch(color='green',label = 'safe')
+    for item in report_data:
+        daycare_info = DaycareCenter.query.filter_by(id=item.dc_id).one()
+        video_info = Video.query.filter_by(id=item.vid_id).one()
+        daycare_description = "영상 정확도 : {}<br>어린이집명 : {}<br>원장 : {}<br>주소 : {}<br>전화번호 : {}-{}-{}".format(str(video_info.accuracy) + '%', daycare_info.name,daycare_info.chief_staff_name,daycare_info.address, daycare_info.ph_num1,daycare_info.ph_num2,daycare_info.ph_num3)
+        data.append({
+            "index":item.id, 
+            "daycare":daycare_info.name,
+            "report_time":convert_datetime(item.time),
+            "time_unix":item.time,
+            "action_time": convert_datetime(video_info.detection_time),
+            "video_path": video_info.name,
+            "video_info":daycare_description,
+            "police_station":item.police_name,
+            "police_status":item.status      
+            })
 
-    plt.legend(handles=[var_V,var_U,var_S], title="cctv statistics", loc=10, bbox_to_anchor=(0.5, 1.5),  ncol=3)
-    plt.show()
+    time_sorted_data = sorted(data, key=lambda x:int(x['time_unix']), reverse=True)
+    return render_template('list.html', 
+                            time_sorted_data=time_sorted_data,
+                            data_length=len(time_sorted_data), 
+                            video_info="Video Description"
+                            ) 
 
-def add_video_db(db, video_path, daycare_name, accuracy, status=0):
-    daycare_center = DaycareCenter.query.filter_by(name=daycare_name).one()
-
-    video = Video(
-        detection_time = time.time() + 9 * 3600,
-        name = os.path.basename(video_path),
-        accuracy = round(accuracy,2),
-        status = status,
-        loc_id = daycare_center.loc_id,
-        dc_id = daycare_center.id
-        )
-
-    db.session.add(video)
-    db.session.commit()
-    return video
-
-def add_report_db(db, video_info):
+@app.route('/report/<video_id>')
+def report_police(video_id):
     police_station = ['답십리지구대', '용신지구대', '청량리파출소', '제기파출소', '전농1파출소', '전농2파출소','장안1파출소', '장안2파출소', '이문지구대', '휘경파출소', '회기파출소']
-    
-    video = Video.query.filter_by(name=video_info.name).one()
-    video.status = 1
-    
+    video = db.session.query(Video).get(int(video_id))
+    video.status = video_status['reported']
+
     report_data = ReportList(
         time = time.time() + 9 * 3600, 
         police_name = np.random.choice(police_station, 1)[0],
@@ -85,150 +210,25 @@ def add_report_db(db, video_info):
     )
     db.session.add(report_data)
     db.session.commit()
+    return redirect(url_for('video'))
 
-    return report_data
-
-def read_video(filename):
-    frames = []
-    if not os.path.isfile(filename):
-        print('file not found')
-    cap = cv2.VideoCapture(filename)
-    while cap.isOpened():
-        ret, frame = cap.read()  
-        if not ret:
-            break
-        frames.append(frame)
-    cap.release()
-    video = np.stack(frames)
-    return video
-
-def load_model():
-    model_path = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Test Data/호준/호준model_best.E_bi_max_pool_ALL_fold_0_t2021-08-27 01:04:46.tar'
-    seed = 250
-
-    args = {
-        'arch': 'E_bi_max_pool',
-        'workers':1,
-        'batch-size':1,
-        'evalmodel':model_path,
-        'kfold':0,
-        'split':5,
-        'frames':10,#5,#5,
-        'lr':1e-6,
-        'weight_decay':1e-1
-    }
-
-    random.seed(seed)
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-
-    # create model
-    print("=> creating model '{}'".format(args['arch']))
-    VP = network_factory(args['arch'])
-
-    model = VP()
-    model = model.cuda()
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), args['lr'],
-                                    weight_decay=args['weight_decay'])
-
-    # optionally resume from a checkpoint
-    if os.path.isfile(args['evalmodel']):
-        print("=> loading checkpoint '{}'".format(args['evalmodel']))
-        checkpoint = torch.load(args['evalmodel'])
-        args['start_epoch'] = checkpoint['epoch']
-        print('start_epoch : ', args['start_epoch'])
-        best_prec = checkpoint['best_prec']
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        print("=> loaded checkpoint '{}' (epoch {})"
-                .format(args['evalmodel'], checkpoint['epoch']))
-    else:
-        print("=> no checkpoint found at '{}'".format(args['evalmodel']))
-
-    seed = 250
-    args = {
-        'arch': 'E_bi_max_pool',
-        'workers':1,
-        'batch-size':1,
-        'evalmodel':model_path,
-        'kfold':0,
-        'split':5,
-        'frames':10,#5,#5,
-        'lr':1e-6,
-        'weight_decay':1e-1
-    }
-
-    random.seed(seed)
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-
-    # create model
-    print("=> creating model '{}'".format(args['arch']))
-    VP = network_factory(args['arch'])
-
-    model = VP()
-    model = model.cuda()
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), args['lr'],
-                                    weight_decay=args['weight_decay'])
-
-    # optionally resume from a checkpoint
-    if os.path.isfile(args['evalmodel']):
-        print("=> loading checkpoint '{}'".format(args['evalmodel']))
-        checkpoint = torch.load(args['evalmodel'])
-        args['start_epoch'] = checkpoint['epoch']
-        print('start_epoch : ', args['start_epoch'])
-        best_prec = checkpoint['best_prec']
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        print("=> loaded checkpoint '{}' (epoch {})"
-                .format(args['evalmodel'], checkpoint['epoch']))
-    else:
-        print("=> no checkpoint found at '{}'".format(args['evalmodel']))
-
-load_model()        
-app = Flask(__name__)
-app.secret_key = 'super secret key'
-app.config['SESSION_TYPE'] = 'filesystem'
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Web/child_abuse_detection_database.db'
-db = SQLAlchemy(app)
-run_with_ngrok(app)   #starts ngrok when the app is run
-
-saved_videos = []
-daycare_center_name = '동대문어린이집'
-starting_time = 0
-end_time = 0
-violence_threshold = 90
-uncertain_threshold = 80
-
-# 영상 저장을 위한 변수
-save_video_path = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Server/saved video/'
-save_violence_path = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Web/static/violence/'
-save_uncertain_path = '/content/gdrive/Shareddrives/2021청년인재_고려대과정_10조/Web/static/uncertain/'
-
-violence_files = []
-uncertain_files = []
-violence_time = []
-uncertain_time = []
+@app.route('/safe/<video_id>')
+def safe_video(video_id):
+    video = db.session.query(Video).get(int(video_id))
+    video.status = video_status['safe']
+    db.session.commit()
+    return redirect(url_for('video'))
 
 @app.route('/predict', methods=['POST'])
 def prediction():
     if request.method == 'POST':
-        global violence_files, violence_time, uncertain_files, uncertain_files, starting_time, end_time
         current_time = time.time()+9*60*60
-        if starting_time == 0:
-            starting_time = current_time
         end = time.time()
 
         file = request.files['file']
         frames = file.read()
         
         FILE_OUTPUT = daycare_center_name + '_' + str(time.strftime('%Y-%m-%d_%H_%M_%S %p', time.gmtime(current_time))) + '.mp4'
-        saved_videos.append(FILE_OUTPUT)
 
         out_file = open(save_video_path + FILE_OUTPUT, "wb") 
         out_file.write(frames)
@@ -237,11 +237,7 @@ def prediction():
         video_path = save_video_path + FILE_OUTPUT
         
         video = read_video(video_path)
-        val_dataset = DatasetReader(video)
-        val_transformations = transforms.Compose([Resize(size=224), SelectFrames(num_frames=args['frames']), FrameDifference(dim=0), Normalize(), ToTensor()])
-
-        val_dataset = DatasetTransform(val_dataset, val_transformations)
-        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=1, pin_memory=False)
+        val_loader = data_loader(args, video)
 
         model.eval()
 
@@ -251,53 +247,42 @@ def prediction():
 
             # compute output
             output_dict = model(input_var)
-            output = output_dict['classification']
 
             model_ret = output_dict['classification'].cpu().detach().numpy()[0][1] * 100
+            
+            # Violence
             if model_ret > violence_threshold:
                 print('-----------------violence detected!!!!!!----------------')
                 print(model_ret, '% violence detected')
-                violence_files.append(FILE_OUTPUT)
-                violence_time.append(current_time)
+
                 shutil.copy(save_video_path+FILE_OUTPUT, save_violence_path+FILE_OUTPUT)
                 save_name = save_violence_path+FILE_OUTPUT.split('.')[0] + '_' + str(round(model_ret,2)) +'.mp4'
                 os.rename( save_violence_path+FILE_OUTPUT, save_name)
 
-                # DB에 PUSH 하는부분
                 video_info = add_video_db(db, save_name, daycare_center_name, model_ret, status=1)
                 report_info = add_report_db(db,video_info)
 
+            # Uncertain
             elif model_ret > uncertain_threshold:
                 print('****** uncertainty detected ******')
                 print(model_ret, '% violence detected')
-                uncertain_files.append(FILE_OUTPUT)
+
                 shutil.copy(save_video_path+FILE_OUTPUT, save_uncertain_path+FILE_OUTPUT)
                 save_name = save_uncertain_path+FILE_OUTPUT.split('.')[0] + '_' + str(round(model_ret,2)) +'.mp4'
                 os.rename( save_uncertain_path+FILE_OUTPUT,  save_name)
 
-                # DB에 PUSH 하는부분
-                video_info = make_video_db(db, save_name,daycare_center_name, model_ret)
-
+                video_info = add_video_db(db, save_name,daycare_center_name, model_ret)
+            
             else:
                 print('violence : ', round(model_ret,2),' %, - ',FILE_OUTPUT)
                 os.rename(save_video_path+FILE_OUTPUT, save_video_path+FILE_OUTPUT.split('.')[0] + '_' + str(round(model_ret,2)) +'.mp4')
+
         print('model calulation time : ',round(time.time() - end,2), ' sec')
-        end_time = current_time + 3
 
         if model_ret > violence_threshold:  
             return json.dumps(str(1))
         else:
             return json.dumps(str(0))
-
-@app.route('/end_stream', methods=['GET'])
-def end_stream():
-    global violence_time, starting_time, end_time, uncertain_time
-    violence = np.array(violence_time) - starting_time
-    violence = violence.astype('uint32')
-    uncertain = np.array(uncertain_time) - starting_time
-    uncertain = uncertain.astype('uint32')
-    endtime = end_time - starting_time
-    graph_cctv_stats(violence,uncertain,endtime)
 
 if __name__ == "__main__":
     app.run()

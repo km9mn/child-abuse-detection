@@ -37,22 +37,11 @@ def main():
     if os.path.isfile(filename):
         os.remove(filename)
 
-    # diff = int(abs(width - height)/2)
-    # flag = 0
-
     video_length = fps * second # 3초에 한번 영상 전송
 
-    # if width > height:
-    #     width = height
-    #     flag = 0 
-    # else:
-    #     height = width
-    #     flag = 1
-
-    #width = 640
-    #height = 640
+    height = int(height/width * 640)
+    width = 640
     out = cv2.VideoWriter(filename, fourcc, fps, (int(width), int(height)))
-    #model_ret = 0
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -61,9 +50,6 @@ def main():
             print('video capture failed')
             break
 
-        #frame = np.array(frame)
-        #frame = frame[diff:-diff,:,:] if flag else frame[:,diff:-diff,:]
-        #frame = frame[:-2*diff,:,:] if flag else frame[:,:-2*diff,:]
         frame = cv2.resize(frame, dsize=(width,height), interpolation=cv2.INTER_LANCZOS4)
 
         out.write(frame)
@@ -76,6 +62,7 @@ def main():
 
             request_thread = ThreadWithResult(target=send_frame, args=(video_path+filename, url))
             request_thread.start()
+            
 
             idx = (idx + 1)%5
             filename = 'temp' + str(idx) + '.mp4'  
@@ -91,9 +78,6 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
-
-    resp = requests.get(url + '/end_stream')
-    print('end stream : ',resp.text)
     return
 
 if __name__ == '__main__':
