@@ -21,12 +21,8 @@
 
 # Service Flow
 
-![service flow](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/da14f93b-2785-426a-a980-ed89dcf59966/%E3%84%B4%E3%84%B7%E3%84%B1.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20210828%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20210828T004037Z&X-Amz-Expires=86400&X-Amz-Signature=b374bc6ace620946b6d7bcecf5933e91d9ab3705643c13796f490c2195f181cb&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22%25E3%2584%25B4%25E3%2584%25B7%25E3%2584%25B1.png%22)
+![KakaoTalk_20210826_145530926](https://user-images.githubusercontent.com/87223387/144708870-62307787-b513-486a-9472-06f123cd9c18.png)
 
-
-# System Architecture
-
-![](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/90ea0c7c-8e37-4940-8dc2-ce52bc4630f7/%EA%B7%B8%EB%A6%BC2.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20210828%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20210828T004104Z&X-Amz-Expires=86400&X-Amz-Signature=b9d047fa5a5a296cbdd4aeee4ac60be5797bec1e83399b6be2462ebcea6f2f79&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22%25EA%25B7%25B8%25EB%25A6%25BC2.png%22)
 
 # Repository
 
@@ -39,5 +35,3 @@
 └── web
 └── webcam live test
 ```
-
-작성 : [김석기](https://github.com/ikgoes)
