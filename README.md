@@ -10,8 +10,9 @@
 
 - **팀원** : 김규민, 김규원, 김석기, 김호준, 이은서
 
+# Logo
 
-![Logo](https://s3.us-west-2.amazonaws.com/secure.notion-static.com/26e41d62-5d22-48e0-ad00-712422ba4884/%EA%B4%B4%EB%8F%84%ED%80%B4%EC%A6%88.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20210828%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20210828T004045Z&X-Amz-Expires=86400&X-Amz-Signature=ba5ca45a58050060fd58e6fc02b63d7a1eb68909bdb626ca2267295647bd1932&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22%25EA%25B4%25B4%25EB%258F%2584%25ED%2580%25B4%25EC%25A6%2588.png%22)
+![KakaoTalk_20210826_214008173](https://user-images.githubusercontent.com/87223387/144708821-9c31c9d2-a196-4004-9729-b1b94cb33788.png)
 
 # Main Feature
 
